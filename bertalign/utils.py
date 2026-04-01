@@ -28,6 +28,8 @@ def split_sents(text, lang):
     if lang in LANG.SPLITTER:
         if lang == 'zh':
             sents = _split_zh(text)
+        elif lang == 'vi':
+            sents = _split_vi(text)
         else:
             splitter = SentenceSplitter(language=lang)
             sents = splitter.split(text=text) 
@@ -36,10 +38,30 @@ def split_sents(text, lang):
     else:
         raise Exception('The language {} is not suppored yet.'.format(LANG.ISO[lang]))
     
+    
 def _split_zh(text, limit=1000):
         sent_list = []
         text = re.sub('(?P<quotation_mark>([。？！](?![”’"\'）])))', r'\g<quotation_mark>\n', text)
         text = re.sub('(?P<quotation_mark>([。？！]|…{1,2})[”’"\'）])', r'\g<quotation_mark>\n', text)
+
+        sent_list_ori = text.splitlines()
+        for sent in sent_list_ori:
+            sent = sent.strip()
+            if not sent:
+                continue
+            else:
+                while len(sent) > limit:
+                    temp = sent[0:limit]
+                    sent_list.append(temp)
+                    sent = sent[limit:]
+                sent_list.append(sent)
+
+        return sent_list
+
+def _split_vi(text, limit=1000):
+        sent_list = []
+        text = re.sub('(?P<quotation_mark>([.?!](?![”’"\'）])))', r'\g<quotation_mark>\n', text)
+        text = re.sub('(?P<quotation_mark>([.?!]|…{1,2})[”’"\'）])', r'\g<quotation_mark>\n', text)
 
         sent_list_ori = text.splitlines()
         for sent in sent_list_ori:
@@ -104,6 +126,7 @@ class LANG:
         'es': 'Spanish',
         'sv': 'Swedish',
         'tr': 'Turkish',
+        'vi': 'Vietnamese',
     }
     ISO = {
 		'aa': 'Afar',
