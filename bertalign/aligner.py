@@ -15,6 +15,7 @@ class Bertalign:
                  margin=True,
                  len_penalty=True,
                  is_split=False,
+                 vi_word_segmentation=True,
                ):
         
         self.max_align = max_align
@@ -46,8 +47,24 @@ class Bertalign:
         print("Target language: {}, Number of sentences: {}".format(tgt_lang, tgt_num))
 
         print("Embedding source and target text using {} ...".format(model.model_name))
-        src_vecs, src_lens = model.transform(src_sents, max_align - 1)
-        tgt_vecs, tgt_lens = model.transform(tgt_sents, max_align - 1)
+        
+        # Word segmentation using pyvi for Vietnamese
+        if vi_word_segmentation:
+            try:
+                from pyvi import ViTokenizer
+            except ImportError:
+                print("Warning: pyvi is not installed. Run 'pip install pyvi' to use Vietnamese word segmentation. Skipping segmentation.")
+                src_sents_embed = src_sents
+                tgt_sents_embed = tgt_sents
+            else:
+                src_sents_embed = [ViTokenizer.tokenize(s) if src_lang == 'Vietnamese' else s for s in src_sents]
+                tgt_sents_embed = [ViTokenizer.tokenize(s) if tgt_lang == 'Vietnamese' else s for s in tgt_sents]
+        else:
+            src_sents_embed = src_sents
+            tgt_sents_embed = tgt_sents
+
+        src_vecs, src_lens = model.transform(src_sents_embed, max_align - 1)
+        tgt_vecs, tgt_lens = model.transform(tgt_sents_embed, max_align - 1)
 
         char_ratio = np.sum(src_lens[0,]) / np.sum(tgt_lens[0,])
 
