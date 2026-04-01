@@ -1,4 +1,7 @@
 import numpy as np
+import csv
+import json
+import os
 
 from bertalign import model
 from bertalign.corelib import *
@@ -105,6 +108,108 @@ class Bertalign:
             src_line = self._get_line(bead[0], self.src_sents)
             tgt_line = self._get_line(bead[1], self.tgt_sents)
             print(src_line + "\n" + tgt_line + "\n")
+
+    def get_alignments(self):
+        """
+        Trả về danh sách các cặp câu đã align dưới dạng list of dict.
+        Mỗi dict chứa:
+            - pair_id    : thứ tự cặp (bắt đầu từ 1)
+            - align_type : loại alignment, ví dụ '1-1', '1-2', '2-1', '0-1'
+            - src_idx    : list chỉ số câu nguồn (0-indexed)
+            - tgt_idx    : list chỉ số câu đích (0-indexed)
+            - src        : câu nguồn (nối bằng dấu cách nếu nhiều câu)
+            - tgt        : câu đích (nối bằng dấu cách nếu nhiều câu)
+        """
+        records = []
+        for i, bead in enumerate(self.result):
+            src_idx = list(bead[0])
+            tgt_idx = list(bead[1])
+            src_line = self._get_line(bead[0], self.src_sents)
+            tgt_line = self._get_line(bead[1], self.tgt_sents)
+            records.append({
+                'pair_id': i + 1,
+                'align_type': "{}-{}".format(len(src_idx), len(tgt_idx)),
+                'src_idx': src_idx,
+                'tgt_idx': tgt_idx,
+                'src': src_line,
+                'tgt': tgt_line,
+            })
+        return records
+
+    def save_sents(self, output_path, format='csv', include_metadata=False):
+        """
+        Xuất kết quả alignment ra file.
+
+        Tham số:
+            output_path (str)       : Đường dẫn file đầu ra.
+            format (str)            : Định dạng xuất. Hỗ trợ:
+                                        'csv'  - Comma-Separated Values (.csv)
+                                        'tsv'  - Tab-Separated Values (.tsv) — chuẩn NLP
+                                        'json' - JSON với đầy đủ metadata (.json)
+                                        'txt'  - Plain text song ngữ, tab-separated (.txt)
+            include_metadata (bool) : Nếu True, thêm các cột pair_id, align_type,
+                                      src_idx, tgt_idx vào CSV/TSV.
+                                      Không ảnh hưởng đến JSON (luôn có metadata) và TXT.
+
+        Ví dụ sử dụng:
+            aligner.save_sents('output.csv')
+            aligner.save_sents('output.tsv', format='tsv')
+            aligner.save_sents('output.json', format='json')
+            aligner.save_sents('output.txt', format='txt')
+            aligner.save_sents('output_meta.csv', include_metadata=True)
+        """
+        fmt = format.lower().strip()
+        records = self.get_alignments()
+
+        if fmt in ('csv', 'tsv'):
+            sep = '\t' if fmt == 'tsv' else ','
+            with open(output_path, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.writer(f, delimiter=sep)
+                if include_metadata:
+                    writer.writerow(['pair_id', 'align_type', 'src_idx', 'tgt_idx',
+                                     self.src_lang, self.tgt_lang])
+                    for r in records:
+                        writer.writerow([
+                            r['pair_id'],
+                            r['align_type'],
+                            ';'.join(str(i) for i in r['src_idx']),
+                            ';'.join(str(i) for i in r['tgt_idx']),
+                            r['src'],
+                            r['tgt'],
+                        ])
+                else:
+                    writer.writerow([self.src_lang, self.tgt_lang])
+                    for r in records:
+                        writer.writerow([r['src'], r['tgt']])
+
+        elif fmt == 'json':
+            output = {
+                'metadata': {
+                    'src_lang': self.src_lang,
+                    'tgt_lang': self.tgt_lang,
+                    'src_sentences_total': self.src_num,
+                    'tgt_sentences_total': self.tgt_num,
+                    'alignment_pairs': len(records),
+                },
+                'alignments': records,
+            }
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(output, f, ensure_ascii=False, indent=2)
+
+        elif fmt == 'txt':
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for r in records:
+                    if r['src'] or r['tgt']:
+                        f.write(r['src'] + '\t' + r['tgt'] + '\n')
+
+        else:
+            raise ValueError(
+                "Định dạng '{}' không được hỗ trợ. Chọn một trong: csv, tsv, json, txt".format(fmt)
+            )
+
+        print("Đã lưu {} cặp câu align sang '{}' (định dạng {})".format(
+            len(records), output_path, fmt.upper()
+        ))
 
     @staticmethod
     def _get_line(bead, lines):
