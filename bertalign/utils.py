@@ -23,18 +23,26 @@ def detect_lang(text):
     return lang
 
 def split_sents(text, lang):
-    # Normalize chapter headers trước khi split
-    text = _normalize_chapter_headers(text, lang)
-    
     if lang in LANG.SPLITTER:
         if lang == 'zh':
             sents = _split_zh(text)
         elif lang == 'vi':
             sents = _split_vi(text)
         else:
+            # Split từng dòng riêng biệt rồi mới gọi SentenceSplitter
+            # → giữ nguyên ranh giới dòng (chapter header, etc.)
             splitter = SentenceSplitter(language=lang)
-            sents = splitter.split(text=text) 
-            sents = [sent.strip() for sent in sents]
+            sents = []
+            for line in text.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                # Nếu dòng là chapter header → giữ nguyên, không split thêm
+                if _is_en_chapter_number(line):
+                    sents.append(line)
+                else:
+                    line_sents = splitter.split(text=line)
+                    sents.extend([s.strip() for s in line_sents if s.strip()])
         return sents
     else:
         raise Exception('The language {} is not suppored yet.'.format(LANG.ISO[lang]))
