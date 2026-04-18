@@ -8,15 +8,12 @@ __version__ = "1.2.0"
 from bertalign.encoder import Encoder
 
 # Best multilingual models for Vietnamese-English alignment:
-# 1. "intfloat/multilingual-e5-large"          - State-of-the-art, best quality (1.1GB)
-# 2. "sentence-transformers/LaBSE"             - Supports 109 langs incl. Vietnamese (1.8GB)  
-# 3. "sentence-transformers/paraphrase-multilingual-mpnet-base-v2" - Lighter option (1.1GB)
-# 4. "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" - Fastest, lighter (470MB)
-#
-# For Vietnamese-English, "intfloat/multilingual-e5-large" gives the best performance.
-# Change DEFAULT_MODEL to switch between models.
+# 1. "BAAI/bge-m3"                            - SOTA! Top 1 currently for multilingual bitext mining & retrieval. (2.2GB)
+# 2. "sentence-transformers/LaBSE"             - Trained explicitly for Bitext Mining by Google. Highly recommended for this task. (1.8GB)  
+# 3. "intfloat/multilingual-e5-large"          - Good overall, but sometimes falls behind on native bitext matching without prefixes. (1.1GB)
+# 4. "Alibaba-NLP/gte-multilingual-base"       - Faster but very strong.
 
-DEFAULT_MODEL = "intfloat/multilingual-e5-large"
+DEFAULT_MODEL = "BAAI/bge-m3"
 
 model_name = DEFAULT_MODEL
 model = Encoder(model_name)

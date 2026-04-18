@@ -8,10 +8,10 @@ class Encoder:
     Sentence encoder wrapper supporting multiple multilingual models.
     
     For Vietnamese-English alignment, recommended models:
-      - "intfloat/multilingual-e5-large"  (best quality)
-      - "sentence-transformers/LaBSE"     (good, 109 langs)
-      - "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-      - "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" (fastest)
+      - "BAAI/bge-m3"                     (SOTA for Multilingual, exceptionally strong)
+      - "sentence-transformers/LaBSE"     (Built strictly for Bitext alignment)
+      - "intfloat/multilingual-e5-large"  (Very good, requires task prefix)
+      - "Alibaba-NLP/gte-multilingual-base"
     """
 
     def __init__(self, model_name):
