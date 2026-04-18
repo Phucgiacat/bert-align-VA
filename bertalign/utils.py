@@ -75,8 +75,37 @@ def _split_vi(text, limit=1000):
                     sent = sent[limit:]
                 sent_list.append(sent)
 
+        # Merge dialogue tags with next sentence
+        sent_list = _merge_dialogue_tags(sent_list)
         return sent_list
-        
+
+# Dialogue tag pattern for Vietnamese literary text
+_DIALOGUE_TAG_RE = re.compile(
+    r'^[\w\s]{2,25}\s*(noi|hoi|dap|thua|cuoi|bao|rang|quat|keu|goi|mang|la|than|khoc|doc|ngam|xuong|n\u00f3i|h\u1ecfi|\u0111\u00e1p|th\u01b0a|c\u01b0\u1eddi|b\u1ea3o|r\u1eb1ng|qu\u00e1t|k\u00eau|g\u1ecdi|m\u1eafng|than|kh\u00f3c|\u0111\u1ecdc|ng\u00e2m|x\u01b0\u1edbng)\s*[:.]?\s*$',
+    re.IGNORECASE | re.UNICODE
+)
+
+def _merge_dialogue_tags(sents):
+    """Merge dialogue tags (e.g. 'Dai Thanh dap:') with the next sentence."""
+    if not sents:
+        return sents
+    merged = []
+    carry = ""
+    for i, sent in enumerate(sents):
+        if carry:
+            sent = carry + " " + sent
+            carry = ""
+        if _DIALOGUE_TAG_RE.match(sent.strip()) and i < len(sents) - 1:
+            carry = sent
+            continue
+        merged.append(sent)
+    if carry:
+        if merged:
+            merged[-1] = merged[-1] + " " + carry
+        else:
+            merged.append(carry)
+    return merged
+
 def yield_overlaps(lines, num_overlaps):
     lines = [_preprocess_line(line) for line in lines]
     for overlap in range(1, num_overlaps + 1):
