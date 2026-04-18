@@ -16,6 +16,13 @@ from bertalign.encoder import Encoder
 DEFAULT_MODEL = "BAAI/bge-m3"
 
 model_name = DEFAULT_MODEL
-model = Encoder(model_name)
+_model_instance = None
+
+def get_model():
+    global _model_instance
+    if _model_instance is None:
+        from bertalign.encoder import Encoder
+        _model_instance = Encoder(DEFAULT_MODEL)
+    return _model_instance
 
 from bertalign.aligner import Bertalign

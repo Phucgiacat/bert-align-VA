@@ -1,9 +1,10 @@
 numba
 faiss-cpu
-googletrans==4.0.0rc1
+langdetect
 sentence-splitter==1.4
 sentence-transformers
 transformers
 sentencepiece
 protobuf
 pyvi
+underthesea

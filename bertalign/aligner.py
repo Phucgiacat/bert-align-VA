@@ -3,7 +3,7 @@ import csv
 import json
 import os
 
-from bertalign import model
+import bertalign
 from bertalign.corelib import *
 from bertalign.utils import *
 
@@ -49,6 +49,7 @@ class Bertalign:
         print("Source language: {}, Number of sentences: {}".format(src_lang, src_num))
         print("Target language: {}, Number of sentences: {}".format(tgt_lang, tgt_num))
 
+        model = bertalign.get_model()
         print("Embedding source and target text using {} ...".format(model.model_name))
         
         # Word segmentation using pyvi for Vietnamese
@@ -66,6 +67,7 @@ class Bertalign:
             src_sents_embed = src_sents
             tgt_sents_embed = tgt_sents
 
+        model = bertalign.get_model()
         src_vecs, src_lens = model.transform(src_sents_embed, max_align - 1)
         tgt_vecs, tgt_lens = model.transform(tgt_sents_embed, max_align - 1)
 
@@ -102,6 +104,43 @@ class Bertalign:
         
         print("Finished! Successfully aligning {} {} sentences to {} {} sentences\n".format(self.src_num, self.src_lang, self.tgt_num, self.tgt_lang))
         self.result = second_alignment
+        self._post_process_alignment()
+    
+    def _is_noise(self, text):
+        import re
+        text = text.strip()
+        if not text:
+            return True
+        # Check if text is only punctuation, spaces, or very short and meaningless
+        if re.match(r'^[\s\.\,\;\:\!\?\-\"\'\…\“\”]+$', text):
+            return True
+        return False
+        
+    def _merge_beads(self, bead1, bead2):
+        # Mở rộng index của src và tgt
+        src_idx = list(bead1[0]) + list(bead2[0])
+        tgt_idx = list(bead1[1]) + list(bead2[1])
+        # Loại bỏ trùng lặp và sắp xếp
+        src_idx = sorted(list(set(src_idx)))
+        tgt_idx = sorted(list(set(tgt_idx)))
+        return (src_idx, tgt_idx)
+
+    def _post_process_alignment(self):
+        """Clean up alignment artifacts: empty pairs, noise, orphans."""
+        cleaned = []
+        for i, bead in enumerate(self.result):
+            src = self._get_line(bead[0], self.src_sents).strip()
+            tgt = self._get_line(bead[1], self.tgt_sents).strip()
+            # Skip fully empty pairs
+            if not src and not tgt:
+                continue
+            # Merge noise into previous pair
+            if self._is_noise(src) or self._is_noise(tgt):
+                if cleaned:
+                    cleaned[-1] = self._merge_beads(cleaned[-1], bead)
+                    continue
+            cleaned.append(bead)
+        self.result = cleaned
     
     def print_sents(self):
         for bead in (self.result):

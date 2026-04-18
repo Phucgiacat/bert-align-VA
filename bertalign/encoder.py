@@ -38,12 +38,11 @@ class Encoder:
             batch_size=32,
         )
 
-        embedding_dim = sent_vecs.size // (len(sents) * num_overlaps)
-        sent_vecs = sent_vecs.copy()
-        sent_vecs.resize(num_overlaps, len(sents), embedding_dim)
+        embedding_dim = sent_vecs.shape[1]
+        sent_vecs = sent_vecs.reshape(num_overlaps, len(sents), embedding_dim)
 
         len_vecs = [len(line.encode("utf-8")) for line in overlaps]
         len_vecs = np.array(len_vecs, dtype=np.float32)
-        len_vecs.resize(num_overlaps, len(sents))
+        len_vecs = len_vecs.reshape(num_overlaps, len(sents))
 
         return sent_vecs, len_vecs

@@ -1,5 +1,5 @@
 import re
-from googletrans import Translator
+from langdetect import detect
 from sentence_splitter import SentenceSplitter
 
 def clean_text(text):
@@ -14,12 +14,10 @@ def clean_text(text):
     return "\n".join(clean_text)
     
 def detect_lang(text):
-    translator = Translator(service_urls=[
-      'translate.google.com.hk',
-    ])
-    max_len = 200
+    """Detect language using langdetect (offline, stable)."""
+    max_len = 500
     chunk = text[0 : min(max_len, len(text))]
-    lang = translator.detect(chunk).lang
+    lang = detect(chunk)
     if lang.startswith('zh'):
         lang = 'zh'
     return lang
@@ -59,24 +57,81 @@ def _split_zh(text, limit=1000):
         return sent_list
 
 def _split_vi(text, limit=1000):
-        sent_list = []
-        text = re.sub('(?P<quotation_mark>([.?!](?![”’"\'）])))', r'\g<quotation_mark>\n', text)
-        text = re.sub('(?P<quotation_mark>([.?!]|…{1,2})[”’"\'）])', r'\g<quotation_mark>\n', text)
+    """Vietnamese sentence splitting with dialogue-aware merging.
+    
+    Uses underthesea for proper Vietnamese NLP sentence splitting,
+    then applies heuristics to merge dialogue tags and noise fragments.
+    Falls back to regex splitting if underthesea is not available.
+    """
+    try:
+        from underthesea import sent_tokenize
+        raw_sents = sent_tokenize(text)
+    except ImportError:
+        # Fallback: regex-based splitting (original logic)
+        raw_sents = _split_vi_regex(text, limit)
+    
+    raw_sents = [s.strip() for s in raw_sents if s.strip()]
+    merged = _merge_short_fragments(raw_sents, min_len=15)
+    
+    final = []
+    for sent in merged:
+        while len(sent) > limit:
+            final.append(sent[:limit])
+            sent = sent[limit:]
+        if sent:
+            final.append(sent)
+    return final
 
-        sent_list_ori = text.splitlines()
-        for sent in sent_list_ori:
-            sent = sent.strip()
-            if not sent:
-                continue
+def _split_vi_regex(text, limit=1000):
+    sent_list = []
+    text = re.sub('(?P<quotation_mark>([.?!](?![”’"\'）])))', r'\g<quotation_mark>\n', text)
+    text = re.sub('(?P<quotation_mark>([.?!]|…{1,2})[”’"\'）])', r'\g<quotation_mark>\n', text)
+
+    sent_list_ori = text.splitlines()
+    for sent in sent_list_ori:
+        sent = sent.strip()
+        if not sent:
+            continue
+        while len(sent) > limit:
+            sent_list.append(sent[:limit])
+            sent = sent[limit:]
+        sent_list.append(sent)
+    return sent_list
+
+_DIALOGUE_TAG_RE = re.compile(
+    r'^[\w\s]{2,25}\s*(nói|hỏi|đáp|thưa|cười|bảo|rằng|quát|kêu|gọi|mắng|la|than|khóc|đọc|ngâm|xướng)\s*[:.]?\s*$',
+    re.UNICODE
+)
+_NOISE_RE = re.compile(r'^[\s\.\,\;\:\!\?\-\"\'…“”]*$')
+
+def _merge_short_fragments(sents, min_len=15):
+    if not sents: return sents
+    merged = []
+    carry = ""
+    for i, sent in enumerate(sents):
+        if carry:
+            sent = carry + " " + sent
+            carry = ""
+        if _DIALOGUE_TAG_RE.match(sent.strip()) and i < len(sents) - 1:
+            carry = sent
+            continue
+        if _NOISE_RE.match(sent.strip()):
+            if merged:
+                merged[-1] = merged[-1] + " " + sent
             else:
-                while len(sent) > limit:
-                    temp = sent[0:limit]
-                    sent_list.append(temp)
-                    sent = sent[limit:]
-                sent_list.append(sent)
+                carry = sent
+            continue
+        if (len(sent.strip()) < min_len 
+            and not sent.strip().endswith(('.', '!', '?', '…'))
+            and i < len(sents) - 1):
+            carry = sent
+            continue
+        merged.append(sent)
+    if carry:
+        if merged: merged[-1] = merged[-1] + " " + carry
+        else: merged.append(carry)
+    return merged
 
-        return sent_list
-        
 def yield_overlaps(lines, num_overlaps):
     lines = [_preprocess_line(line) for line in lines]
     for overlap in range(1, num_overlaps + 1):

@@ -6,7 +6,14 @@ from sys import platform
 
 def second_back_track(i, j, pointers, search_path, a_types):
     alignment = []
+    max_steps = i + j + 1
+    step = 0
     while ( 1 ):
+        step += 1
+        if step > max_steps:
+            print(f"Warning: Backtracking exceeded {max_steps} steps. Breaking loop to prevent infinite loop.")
+            break
+            
         j_offset = j - search_path[i][0]
         a = pointers[i][j_offset]
         s = a_types[a][0]
@@ -20,6 +27,8 @@ def second_back_track(i, j, pointers, search_path, a_types):
     
         if i == 0 and j == 0:
             return alignment[::-1]
+    
+    return alignment[::-1]
 
 @nb.jit(nopython=True, fastmath=True, cache=True)
 def second_pass_align(src_vecs,
@@ -252,7 +261,14 @@ def first_back_track(i, j, pointers, search_path, a_types):
         alignment: list of tuples for 1-1 alignments.
     """
     alignment = []
+    max_steps = i + j + 1
+    step = 0
     while ( 1 ):
+        step += 1
+        if step > max_steps:
+            print(f"Warning: Backtracking exceeded {max_steps} steps. Breaking loop to prevent infinite loop.")
+            break
+            
         j_offset = j - search_path[i][0]
         a = pointers[i][j_offset]
         s = a_types[a][0]
@@ -265,6 +281,8 @@ def first_back_track(i, j, pointers, search_path, a_types):
     
         if i == 0 and j == 0: # if reaching the origin
             return alignment[::-1]
+            
+    return alignment[::-1]
 
 @nb.jit(nopython=True, fastmath=True, cache=True)
 def first_pass_align(src_len,
