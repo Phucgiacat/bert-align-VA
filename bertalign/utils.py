@@ -23,6 +23,9 @@ def detect_lang(text):
     return lang
 
 def split_sents(text, lang):
+    # Normalize chapter headers trước khi split
+    text = _normalize_chapter_headers(text, lang)
+    
     if lang in LANG.SPLITTER:
         if lang == 'zh':
             sents = _split_zh(text)
@@ -35,6 +38,56 @@ def split_sents(text, lang):
         return sents
     else:
         raise Exception('The language {} is not suppored yet.'.format(LANG.ISO[lang]))
+
+
+# --- Chapter header detection ---
+# English number words used as chapter headers in Journey to the West
+_EN_NUMBER_WORDS = {
+    'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN',
+    'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN',
+    'EIGHTEEN', 'NINETEEN', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY',
+    'SEVENTY', 'EIGHTY', 'NINETY', 'HUNDRED',
+}
+
+def _is_en_chapter_number(line):
+    """Check if a line is an English chapter number like 'FIFTY-TWO', 'ONE', etc."""
+    line = line.strip()
+    if not line:
+        return False
+    # Split on hyphens and spaces: "FIFTY-TWO" → ["FIFTY", "TWO"]
+    parts = re.split(r'[-\s]+', line)
+    return all(p in _EN_NUMBER_WORDS for p in parts) and len(parts) <= 4
+
+def _is_vi_chapter_header(line):
+    """Check if a line is a Vietnamese chapter header like 'HỒI THỨ NĂM MƯƠI HAI'."""
+    line = line.strip().upper()
+    return line.startswith('HỒI THỨ') or re.match(r'^HỒI\s+\d+', line) is not None
+
+def _normalize_chapter_headers(text, lang):
+    """Add sentence-ending punctuation to chapter headers so SentenceSplitter
+    treats them as standalone sentences instead of merging with adjacent text.
+    
+    Before: '...next chapter.\\nFIFTY-TWO\\nWukong greatly disturbed...'
+    After:  '...next chapter.\\nFIFTY-TWO.\\nWukong greatly disturbed...'
+    """
+    lines = text.split('\n')
+    normalized = []
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        if lang == 'en' and _is_en_chapter_number(stripped):
+            # "FIFTY-TWO" → "FIFTY-TWO."
+            if not stripped.endswith('.'):
+                line = stripped + '.'
+        elif lang == 'vi' and _is_vi_chapter_header(stripped):
+            # "HỒI THỨ NĂM MƯƠI HAI" → "HỒI THỨ NĂM MƯƠI HAI."
+            if not stripped.endswith('.'):
+                line = stripped + '.'
+        
+        normalized.append(line)
+    
+    return '\n'.join(normalized)
     
     
 def _split_zh(text, limit=1000):
