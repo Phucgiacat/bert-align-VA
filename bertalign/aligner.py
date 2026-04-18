@@ -67,7 +67,6 @@ class Bertalign:
             src_sents_embed = src_sents
             tgt_sents_embed = tgt_sents
 
-        model = bertalign.get_model()
         src_vecs, src_lens = model.transform(src_sents_embed, max_align - 1)
         tgt_vecs, tgt_lens = model.transform(tgt_sents_embed, max_align - 1)
 

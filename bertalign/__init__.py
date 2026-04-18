@@ -5,7 +5,6 @@ Bertalign initialization - Vietnamese-English extended version
 __author__ = "Jason (bfsujason@163.com) | Extended for Vietnamese by Phucgiacat"
 __version__ = "1.2.0"
 
-from bertalign.encoder import Encoder
 
 # Best multilingual models for Vietnamese-English alignment:
 # 1. "BAAI/bge-m3"                            - SOTA! Top 1 currently for multilingual bitext mining & retrieval. (2.2GB)
